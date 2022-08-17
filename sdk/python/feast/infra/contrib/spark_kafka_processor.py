@@ -156,15 +156,22 @@ class SparkKafkaProcessor(StreamProcessor):
 
         query = df.writeStream.outputMode("update").option("checkpointLocation", "/tmp/checkpoint/")
         if self.processing_time:
-            query = query.trigger(processingTime=self.processing_time)
+            query = (
+                query.trigger(processingTime=self.processing_time)
+                .foreachBatch(batch_write)
+                .start()
+            )
         elif self.continuous:
-            query = query.trigger(continuous=self.continuous)
+            query = (
+                query.trigger(continuous=self.continuous)
+                .start()
+            )
         else:
-            query = query.trigger(once=True)
-        query = (
-            query.foreachBatch(batch_write)
-            .start()
-        )
+            query = (
+                query.trigger(once=True)
+                .foreachBatch(batch_write)
+                .start()
+            )
 
         query.awaitTermination(timeout=self.query_timeout)
         return query
