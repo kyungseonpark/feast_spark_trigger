@@ -159,6 +159,7 @@ class SparkKafkaProcessor(StreamProcessor):
             query = (
                 df.writeStream.option("checkpointLocation", "/tmp/checkpoint/")
                 .trigger(continuous=self.continuous)
+                .foreach(batch_write)
                 .start()
             )
         else:
