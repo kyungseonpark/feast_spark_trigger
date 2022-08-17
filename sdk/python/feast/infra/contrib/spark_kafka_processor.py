@@ -19,7 +19,8 @@ from feast.stream_feature_view import StreamFeatureView
 
 class SparkProcessorConfig(ProcessorConfig):
     spark_session: SparkSession
-    processing_time: str
+    processing_time: Optional[str] = None
+    continuous: Optional[str] = None
     query_timeout: int
 
 
@@ -59,6 +60,7 @@ class SparkKafkaProcessor(StreamProcessor):
         self.spark = config.spark_session
         self.preprocess_fn = preprocess_fn
         self.processing_time = config.processing_time
+        self.continuous = config.continuous
         self.query_timeout = config.query_timeout
         self.join_keys = [fs.get_entity(entity).join_key for entity in sfv.entities]
         super().__init__(fs=fs, sfv=sfv, data_source=sfv.stream_source)
@@ -152,11 +154,15 @@ class SparkKafkaProcessor(StreamProcessor):
                 if to == PushMode.OFFLINE or to == PushMode.ONLINE_AND_OFFLINE:
                     self.fs.write_to_offline_store(self.sfv.name, rows)
 
+        query = df.writeStream.outputMode("update").option("checkpointLocation", "/tmp/checkpoint/")
+        if self.processing_time:
+            query = query.trigger(processingTime=self.processing_time)
+        elif self.continuous:
+            query = query.trigger(continuous=self.continuous)
+        else:
+            query = query.trigger(once=True)
         query = (
-            df.writeStream.outputMode("update")
-            .option("checkpointLocation", "/tmp/checkpoint/")
-            .trigger(processingTime=self.processing_time)
-            .foreachBatch(batch_write)
+            query.foreachBatch(batch_write)
             .start()
         )
 
