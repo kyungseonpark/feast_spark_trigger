@@ -5,6 +5,7 @@ import pandas as pd
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.avro.functions import from_avro
 from pyspark.sql.functions import col, from_json
+from pyspark.sql.types import Row
 
 from feast.data_format import AvroFormat, JsonFormat
 from feast.data_source import KafkaSource, PushMode
@@ -159,6 +160,7 @@ class SparkKafkaProcessor(StreamProcessor):
                 df.writeStream.outputMode("update")
                 .option("checkpointLocation", "/tmp/checkpoint/")
                 .trigger(continuous=self.continuous)
+                .foreach(batch_write)
                 .start()
             )
         else:
