@@ -154,15 +154,7 @@ class SparkKafkaProcessor(StreamProcessor):
                 if to == PushMode.OFFLINE or to == PushMode.ONLINE_AND_OFFLINE:
                     self.fs.write_to_offline_store(self.sfv.name, rows)
 
-        if self.processing_time:
-            query = (
-                df.writeStream.outputMode("update")
-                .option("checkpointLocation", "/tmp/checkpoint/")
-                .trigger(processingTime=self.processing_time)
-                .foreachBatch(batch_write)
-                .start()
-            )
-        elif self.continuous:
+        if self.continuous:
             query = (
                 df.writeStream.outputMode("update")
                 .option("checkpointLocation", "/tmp/checkpoint/")
@@ -173,7 +165,7 @@ class SparkKafkaProcessor(StreamProcessor):
             query = (
                 df.writeStream.outputMode("update")
                 .option("checkpointLocation", "/tmp/checkpoint/")
-                .trigger(once=True)
+                .trigger(processingTime=self.processing_time)
                 .foreachBatch(batch_write)
                 .start()
             )
